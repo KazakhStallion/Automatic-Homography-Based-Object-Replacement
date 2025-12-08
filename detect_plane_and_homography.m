@@ -2,10 +2,10 @@ function [H, quadPts, debug] = detect_plane_and_homography(sceneRGB, posterRGB)
 
 sceneGray = rgb2gray(sceneRGB);
 
-% --- 1. Canny edges ---
+% Canny edges
 edgeMap = edge(sceneGray, 'canny');
 
-% --- 2. Find all contours ---
+% Find all contours
 B = bwboundaries(edgeMap);
 
 bestArea = -inf;
@@ -15,7 +15,7 @@ for k = 1:length(B)
     contour = B{k};              % Nx2 [row, col]
     pts = fliplr(contour);       % convert to [x, y]
 
-    % --- 3. Polygon simplify (Douglas-Peucker) ---
+    % Polygon simplify
     epsilon = 5;                 % adjust 1–10 depending on image scale
     approx = reducepoly(pts, epsilon);
 
@@ -35,10 +35,10 @@ end
 
 quadPts = bestQuad;
 
-% --- Order TL TR BR BL ---
+% Order TL TR BR BL
 quadPts = order_quad_points(quadPts);
 
-% --- Compute H ---
+% Compute H
 [H, ~] = build_homography_from_poster(posterRGB, quadPts);
 
 debug.edge      = edgeMap;
