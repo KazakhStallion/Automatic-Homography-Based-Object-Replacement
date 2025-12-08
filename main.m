@@ -10,17 +10,43 @@ if size(poster,3) == 1, poster = repmat(poster,[1 1 3]); end
 
 [H, quadPts, debug] = detect_plane_and_homography(scene, poster);
 
-figure; imshow(scene); title('Detected Quad');
+[hScene, wScene, ~] = size(scene);
+
+% Build a binary mask of the convex hull
+hull     = debug.hull;          % Mx2 [x y]
+hullMask = poly2mask(hull(:,1), hull(:,2), hScene, wScene);
+
+% Corners chosen from hull
+cornerPts = hull(debug.cornerIdx, :);
+
+% --- Figure 1: Hull + detected corners (from hull) ---
+figure; imshow(scene); title('Hull + Detected Corners');
 hold on;
-plot([quadPts(:,1); quadPts(1,1)], ...
-     [quadPts(:,2); quadPts(1,2)], 'g-', 'LineWidth', 3);
-plot(quadPts(:,1), quadPts(:,2), 'ro', 'MarkerSize', 8, 'LineWidth', 2);
+plot([hull(:,1); hull(1,1)], [hull(:,2); hull(1,2)], 'y-', 'LineWidth', 2);  % hull
+plot(cornerPts(:,1), cornerPts(:,2), 'ro', 'MarkerSize', 10, 'LineWidth', 2); % corners from hull
+legend({'Hull','Detected corners (from hull)'}, 'Location','best');
 hold off;
 
-fprintf('Homography H:\n');
-disp(H);
+% --- Figure 2: Hull area overlay ---
+figure; 
+imshow(scene); title('Hull Area Overlay');
+hold on;
+h = imshow(cat(3, zeros(hScene,wScene), ones(hScene,wScene), zeros(hScene,wScene)));
+set(h, 'AlphaData', 0.3 * hullMask);
+hold off;
 
-% Warp and composite
+% --- Figure 3: Hull outline + quad used for H ---
+figure; imshow(scene); title('Hull Outline + Quad');
+hold on;
+plot([hull(:,1); hull(1,1)], [hull(:,2); hull(1,2)], 'y-', 'LineWidth', 2);  % hull
+qp = quadPts;
+plot([qp(:,1); qp(1,1)], [qp(:,2); qp(1,2)], 'g-', 'LineWidth', 2);
+plot(qp(:,1), qp(:,2), 'ro', 'MarkerSize', 8, 'LineWidth', 2);
+legend({'Hull','Quad'}, 'Location','best');
+hold off;
+
+
+% --- Warp and composite ---
 [outImg, warpedPoster, mask] = warp_and_composite(scene, poster, H);
 
 figure; 
@@ -30,7 +56,4 @@ subplot(1,4,2); imshow(poster); title('Original Poster');
 subplot(1,4,3); imshow(warpedPoster); title('Warped Poster');
 subplot(1,4,4); imshow(outImg); title('Final AR Composite');
 
-% Edge map & candidate mask
-figure; 
-subplot(1,2,1); imshow(debug.edge); title('Canny Edges');
-subplot(1,2,2); imshow(debug.candidateMask); title('Selected White Region');
+
