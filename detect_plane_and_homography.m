@@ -5,6 +5,8 @@ sceneGray = rgb2gray(sceneRGB);
 % Canny edges
 edgeMap = edge(sceneGray, 'canny');
 
+
+%%%%% WORK on the stuf below%%%%%%
 % Find all contours
 B = bwboundaries(edgeMap);
 
@@ -37,6 +39,8 @@ quadPts = bestQuad;
 
 % Order TL TR BR BL
 quadPts = order_quad_points(quadPts);
+
+%%% UNtil HERE %%%%
 
 % Compute H
 [H, ~] = build_homography_from_poster(posterRGB, quadPts);
