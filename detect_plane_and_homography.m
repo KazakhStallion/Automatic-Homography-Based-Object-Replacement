@@ -1,29 +1,66 @@
 function [H, quadPts, debug] = detect_plane_and_homography(sceneRGB, posterRGB)
 % Detects a white planar quad and computes H: poster -> scene
-
 sceneGray   = rgb2gray(sceneRGB);
-sceneDouble = im2double(sceneGray);
 
-% --- 1. Canny edges (debug only) ---
+% Canny edges (debug only)
 edgeMap = edge(sceneGray, 'canny');
 
-% --- 2. Whiteness mask ---
-thBright    = graythresh(sceneGray);          % Otsu baseline
-brightMask  = sceneDouble > max(thBright,0.7);
-brightMask  = bwareaopen(brightMask, 500);    % remove tiny blobs
-brightMask  = imfill(brightMask, 'holes');    % fill holes
+% --- 2. Whiteness mask in HSV (paper vs hoodie) ---
+sceneHSV = rgb2hsv(sceneRGB);
+S = sceneHSV(:,:,2);
+V = sceneHSV(:,:,3);
+
+% paper: bright AND low saturation
+paperMask = (V > 0.7) & (S < 0.25);    % ← this kills hands & glare
+
+% clean up
+paperMask = imopen(paperMask,  strel('disk', 4));   % remove thin hand connections
+paperMask = imclose(paperMask, strel('disk', 8));   % fill small gaps inside paper
+paperMask = imfill(paperMask, 'holes');
+paperMask = bwareaopen(paperMask, 1500);
 
 % --- 3. Pick largest bright region (paper) ---
-stats = regionprops(brightMask, 'Area','PixelIdxList');
+% --- 3. Pick best bright region (paper) using area + rectangularity ---
+stats = regionprops(paperMask, 'Area','BoundingBox','Solidity','PixelIdxList');
+
 if isempty(stats)
     error('No bright regions found. Adjust threshold or lighting.');
 end
 
-[~, idxMax] = max([stats.Area]);
-bestRegion  = stats(idxMax);
+bestScore = -inf;
+bestIdx   = 0;
 
-candidateMask = false(size(brightMask));
+for i = 1:numel(stats)
+    A  = stats(i).Area;
+    bb = stats(i).BoundingBox;      % [x y w h]
+    w  = bb(3);
+    h  = bb(4);
+
+    if w < 50 || h < 50
+        continue;   % too small to be the sheet
+    end
+
+    % rectangularity: how well it fills its bounding box
+    rectFill = A / (w*h + eps);     % 1.0 is perfect rectangle
+
+    % slightly prefer compact, rectangular, large regions
+    score = A * rectFill * rectFill;   % area × (rectFill^2)
+
+    if score > bestScore
+        bestScore = score;
+        bestIdx   = i;
+    end
+end
+
+if bestIdx == 0
+    error('No suitable rectangular bright region found.');
+end
+
+bestRegion = stats(bestIdx);
+
+candidateMask = false(size(paperMask));
 candidateMask(bestRegion.PixelIdxList) = true;
+
 
 % --- 4. Convex hull of the paper region ---
 sHull = regionprops(candidateMask, 'ConvexHull');

@@ -25,13 +25,13 @@ end
 
 % Optional: soft edge blending (feathering) – small blur on mask
 % Uncomment if you want smoother transition:
-% se = strel('disk',3);
-% softMask = imerode(mask, se);
-% alpha = imgaussfilt(double(softMask), 2);
-% alpha = alpha / max(alpha(:));
-% for c = 1:3
-%     channel = double(sceneRGB(:,:,c));
-%     wChan   = double(warpedPoster(:,:,c));
-%     outImg(:,:,c) = uint8(alpha .* wChan + (1-alpha) .* channel);
-% end
+se = strel('disk',3);
+softMask = imerode(mask, se);
+alpha = imgaussfilt(double(softMask), 2);
+alpha = alpha / max(alpha(:));
+for c = 1:3
+    channel = double(sceneRGB(:,:,c));
+    wChan   = double(warpedPoster(:,:,c));
+    outImg(:,:,c) = uint8(alpha .* wChan + (1-alpha) .* channel);
+end
 end
