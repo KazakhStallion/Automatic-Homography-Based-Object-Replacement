@@ -1,7 +1,7 @@
 clear; close all; clc;
 
 % Load images
-scene  = imread('scene4.png');
+scene  = imread('scene.png');
 poster = imread('poster.png');
 
 % Ensure 3 channels
