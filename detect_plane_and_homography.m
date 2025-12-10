@@ -5,7 +5,7 @@ sceneGray   = rgb2gray(sceneRGB);
 % Canny edges (debug only)
 edgeMap = edge(sceneGray, 'canny');
 
-% --- 2. Whiteness mask in HSV (paper vs hoodie) ---
+% Whiteness mask in HSV
 sceneHSV = rgb2hsv(sceneRGB);
 S = sceneHSV(:,:,2);
 V = sceneHSV(:,:,3);
@@ -19,8 +19,7 @@ paperMask = imclose(paperMask, strel('disk', 8));   % fill small gaps inside pap
 paperMask = imfill(paperMask, 'holes');
 paperMask = bwareaopen(paperMask, 1500);
 
-% --- 3. Pick largest bright region (paper) ---
-% --- 3. Pick best bright region (paper) using area + rectangularity ---
+% Pick best bright region (paper) using area + rectangularity
 stats = regionprops(paperMask, 'Area','BoundingBox','Solidity','PixelIdxList');
 
 if isempty(stats)
@@ -62,7 +61,7 @@ candidateMask = false(size(paperMask));
 candidateMask(bestRegion.PixelIdxList) = true;
 
 
-% --- 4. Convex hull of the paper region ---
+% Convex hull of the paper region
 sHull = regionprops(candidateMask, 'ConvexHull');
 hull  = sHull.ConvexHull;   % Mx2, [x y]
 
@@ -72,18 +71,17 @@ if M < 4
 end
 
 
-% 5. Corner detection from hull using turn angle + quadrants
+% Corner detection from hull using turn angle + quadrants
 
 pts = hull;                % Mx2, assume ordered around the boundary
 
-% indices of previous and next points in the cyclic hull
 prevIdx = [M, 1:M-1];
 nextIdx = [2:M, 1];
 
 v1 = pts - pts(prevIdx,:);       % prev -> current
 v2 = pts(nextIdx,:) - pts;       % current -> next
 
-% normalize, avoid division by zero
+% avoid division by zero
 v1n = sqrt(sum(v1.^2,2)) + eps;
 v2n = sqrt(sum(v2.^2,2)) + eps;
 v1u = v1 ./ v1n;
@@ -91,10 +89,10 @@ v2u = v2 ./ v2n;
 
 % angle between v1 and v2
 cosTheta = sum(v1u .* v2u, 2);
-cosTheta = max(min(cosTheta, 1), -1);   % clamp for safety
+cosTheta = max(min(cosTheta, 1), -1);
 turnAngle = acos(cosTheta);             % radians
 
-% --- assign hull points to quadrants around centroid ---
+% assign hull points to quadrants around centroid
 cHull = mean(pts, 1);
 dx = pts(:,1) - cHull(1);
 dy = pts(:,2) - cHull(2);
@@ -138,13 +136,13 @@ end
 quadPts = pts(cornerIdx, :);    % 4x2 unordered corners from hull
 
 
-% --- 6. Order as TL, TR, BR, BL ---
+% Order as TL, TR, BR, BL corners
 quadPts = order_quad_points(quadPts);
 
-% --- 7. Homography from poster corners to quadPts ---
+% Homography from poster corners to quadPts
 [H, ~] = build_homography_from_poster(posterRGB, quadPts);
 
-% --- 8. Debug outputs ---
+% Outputs
 debug.edge          = edgeMap;
 debug.candidateMask = candidateMask;
 debug.hull          = hull;
