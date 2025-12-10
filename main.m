@@ -54,13 +54,15 @@ figure('Name','Pipeline Overview','Color','w');
 
 tiledlayout(2,2,'TileSpacing','compact','Padding','compact');
 
-% (1) Original scene + quad
+% (1) Hull + quad
 nexttile;
 imshow(scene); hold on;
+plot([hull(:,1); hull(1,1)], ...
+             [hull(:,2); hull(1,2)], 'y-', 'LineWidth', 3);
 plot([quadPts(:,1); quadPts(1,1)], ...
      [quadPts(:,2); quadPts(1,2)], 'g-', 'LineWidth', 2);
 plot(quadPts(:,1), quadPts(:,2), 'ro', 'LineWidth', 2);
-title('Original Scene + Detected Quad');
+title('Original Scene + Detected Hull & Quad');
 
 % (2) Original poster
 nexttile;
